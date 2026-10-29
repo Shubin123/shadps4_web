@@ -2,9 +2,13 @@
 // copies a game folder the user picks into the emulator's in-memory filesystem, starts it, and
 // wires its output (log, presented frames) and input (keyboard -> PS4 pad) to the page.
 //
+// URL parameters: ?renderer=webgpu|webgl2|2d picks how frames are drawn (default: the best one
+// available, see gpu_presenter.js); ?gpu=off keeps WebGPU from the emulator entirely (guest compute
+// dispatches are then dropped, as in builds before the WebGPU backend).
+//
 // Exposes window.shadps4 for the page and the Playwright tests.
 
-/* global createShadPS4 */
+/* global createShadPS4, ShadPS4Presenter */
 (function () {
   "use strict";
 
@@ -27,8 +31,11 @@
     Enter: PAD.options, Space: PAD.touchpad,
   };
 
+  const params = new URLSearchParams(location.search);
+
   const state = {
     module: null,
+    presenter: null,
     files: [],
     started: false,
     frames: 0,
@@ -83,16 +90,12 @@
       throw new Error("shadps4.js is missing - run scripts/sync_runtime.sh");
     }
     status("Loading shadps4.wasm…");
-    const ctx = canvas.getContext("2d");
     const mod = await createShadPS4({
       print: (t) => addLog(t, false),
       printErr: (t) => addLog(t, true),
+      shadps4GpuMode: params.get("gpu") === "off" ? "off" : undefined,
       shadps4OnFrame: (rgba, w, h, index) => {
-        if (canvas.width !== w || canvas.height !== h) {
-          canvas.width = w;
-          canvas.height = h;
-        }
-        ctx.putImageData(new ImageData(rgba, w, h), 0, 0);
+        if (state.presenter) state.presenter.present(rgba, w, h);
         state.frames = index;
         emit("frame", { w, h, index });
       },
@@ -102,6 +105,15 @@
       },
     });
     state.module = mod;
+    const gpu = mod.shadps4Gpu;
+    state.presenter = await ShadPS4Presenter.create(canvas, {
+      device: gpu ? gpu.device : null,
+      prefer: params.get("renderer") || "auto",
+    });
+    addLog(`[page] frames drawn with ${state.presenter.kind}; ` + (gpu
+      ? `guest compute runs on WebGPU (${gpu.description || "adapter"})`
+      : "no WebGPU device, guest compute dispatches are dropped"));
+    for (const reason of state.presenter.fallbackReasons) addLog(`[page] ${reason}`, true);
     status("Runtime ready");
     return mod;
   }
@@ -171,6 +183,9 @@
     on(kind, fn) { state.listeners[kind].push(fn); },
     get log() { return state.log; },
     get frames() { return state.frames; },
+    get presenter() { return state.presenter ? state.presenter.kind : null; },
+    get webgpu() { return !!(state.module && state.module.shadps4Gpu); },
+    selfTestPresenter: (prefer) => ShadPS4Presenter.selfTest(prefer),
     get started() { return state.started; },
     KEYMAP,
   };

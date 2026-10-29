@@ -3,6 +3,7 @@
 // emulator's log. Writes the full log and a screenshot next to the given output path.
 //
 //   node tests/e2e.mjs <game folder> [expected log text] [timeout seconds] [out prefix]
+// QUERY (e.g. "renderer=webgl2" or "gpu=off") is appended to the page URL.
 import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
@@ -24,14 +25,15 @@ const server = spawn(process.execPath, [path.join(here, "..", "web", "server.cjs
 });
 await new Promise((r) => setTimeout(r, 500));
 
-const browser = await chromium.launch({ headless: true });
+// Full Chromium with WebGPU on (the headless shell's canvases can't present WebGPU textures).
+const browser = await chromium.launch({ headless: true, channel: "chromium", args: ["--enable-unsafe-webgpu"] });
 let ok = false;
 try {
   const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
   const consoleLines = [];
   page.on("console", (m) => consoleLines.push(`[console.${m.type()}] ${m.text()}`));
   page.on("pageerror", (e) => consoleLines.push(`[pageerror] ${e.message}`));
-  await page.goto(`http://localhost:${port}/`);
+  await page.goto(`http://localhost:${port}/${process.env.QUERY ? "?" + process.env.QUERY : ""}`);
   const env = await page.evaluate(() => ({
     isolated: self.crossOriginIsolated,
     problems: window.shadps4.environmentProblems(),
@@ -60,7 +62,9 @@ try {
   log = await page.evaluate(() => window.shadps4.log.slice());
   writeFileSync(`${outPrefix}.log`, [...log, "", ...consoleLines].join("\n"));
   await page.screenshot({ path: `${outPrefix}.png`, fullPage: true });
-  console.log(`log lines: ${log.length}, frames: ${await page.evaluate(() => window.shadps4.frames)}`);
+  const gfx = await page.evaluate(() => ({ presenter: window.shadps4.presenter, webgpu: window.shadps4.webgpu }));
+  console.log(`log lines: ${log.length}, frames: ${await page.evaluate(() => window.shadps4.frames)}, ` +
+    `presenter: ${gfx.presenter}, WebGPU device: ${gfx.webgpu}`);
   console.log(ok ? `PASS: saw "${expected}"` : `FAIL: did not see "${expected}" within ${timeoutSec}s`);
 } finally {
   await browser.close();
