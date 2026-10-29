@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>shadPS4 Web — PlayStation 4 Emulator (WIP)</title>
+<title>shadPS4 Web</title>
+<script src="coi-serviceworker.js"></script>
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -200,6 +201,26 @@
         display: none;
     }
 
+    #log {
+        height: 340px;
+        overflow-y: auto;
+        font-size: 0.68rem;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        background: #0a0a1a;
+        border: 1px solid #253d69;
+        border-radius: 5px;
+        padding: 6px 8px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: #c9d4ea;
+    }
+    #log .err { color: #f3a6a6; }
+    #log .guest { color: #8fd6a6; }
+    .card.wide { grid-column: 1 / -1; }
+    table.keys { width: 100%; font-size: 0.74rem; border-collapse: collapse; }
+    table.keys td { padding: 2px 4px; border-bottom: 1px solid #0f3460; }
+    table.keys td:first-child { color: #aaa; }
+    kbd { background: #0f3460; border-radius: 3px; padding: 0 5px; font-size: 0.7rem; }
     @media (max-width: 760px) {
         .canvas-panel { flex: 1 1 auto; max-width: 100%; }
     }
@@ -208,7 +229,7 @@
 <body>
 <header>
     <h1>🕹 shadPS4 Web</h1>
-    <p>PlayStation 4 Emulator — WebAssembly attempt, in progress</p>
+    <p>PlayStation 4 emulator, compiled to WebAssembly</p>
     <div class="links">
         <a href="https://github.com/shadps4-emu/shadps4" target="_blank" rel="noopener">shadPS4 upstream</a>·
         <a href="https://github.com/Shubin123/shadps4_emscripten" target="_blank" rel="noopener">backend</a>·
@@ -216,150 +237,141 @@
         <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>
     </div>
 </header>
-
-<div class="banner">
-    <strong>Nothing below runs a game.</strong> shadPS4 runs PS4 (x86-64) code directly on the
-    host CPU instead of emulating it, which WebAssembly can't do at all — so unlike a
-    Citra/Azahar-style port, there was no existing CPU interpreter to carry over. One is being
-    built from scratch (register file, flags, control flow — tested, see
-    <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>),
-    but it isn't wired into a buildable shadPS4+Emscripten binary yet. The settings below reflect
-    where things are, or are heading, not what works today.
+<div class="banner" id="banner">
+    <strong>What this does today:</strong> upstream shadPS4 (loader, linker, memory manager, ~200
+    HLE system libraries) runs in your browser, and the game's x86-64 code runs in an x86-64
+    interpreter. <strong>What it doesn't do yet:</strong> anything the PS4 GPU draws (there is no
+    WebGPU backend for shadPS4's Vulkan renderer), so expect a black screen, and expect it to be
+    slow. Needs Chrome/Edge 133+ (wasm64 + SharedArrayBuffer). The game folder must be an
+    extracted dump (e.g. from a fake PKG via <code>tools/extract_pkg.py</code> in the backend repo);
+    files are read locally and never uploaded.
 </div>
-
 <div class="main-layout">
     <div class="canvas-panel">
         <div class="screen-stage" id="screen-stage">
-            <canvas id="canvas" width="960" height="540"></canvas>
+            <canvas id="canvas" width="1280" height="720"></canvas>
             <button type="button" class="stage-fullscreen-btn" id="btn-fullscreen-stage" title="Fullscreen" aria-label="Fullscreen">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>
                 </svg>
             </button>
         </div>
-        <p class="canvas-caption">960×540 placeholder — no renderer exists yet</p>
+        <p class="canvas-caption" id="canvas-caption">VideoOut scan-out · no frames yet</p>
     </div>
-
     <div class="controls-panel" id="widget-grid">
-
+        <div class="card" data-widget="game">
+            <h2><span>📂 Game</span><span class="collapse-arrow">▾</span></h2>
+            <input type="file" id="folder-input" webkitdirectory directory multiple>
+            <label for="folder-input" class="file-label" id="folder-label">Choose an extracted game folder (the one containing eboot.bin)</label>
+            <button class="btn btn-primary" id="btn-start" disabled>▶ Start</button>
+            <button class="btn btn-secondary" id="btn-reset">↺ Reset (reload page)</button>
+            <div id="game-status" class="mode-help">No folder chosen.</div>
+        </div>
         <div class="card" data-widget="status">
             <h2><span>📋 Status</span><span class="collapse-arrow">▾</span></h2>
-            <div class="status-row"><span class="label">x86-64 interpreter core</span><span class="pill ok">implemented</span></div>
-            <div class="status-row"><span class="label">Guest↔host call boundary</span><span class="pill ok">implemented</span></div>
-            <div class="status-row"><span class="label">Guest virtual memory</span><span class="pill pending">started</span></div>
-            <div class="status-row"><span class="label">Wired into shadPS4's linker</span><span class="pill pending">started</span></div>
-            <div class="status-row"><span class="label">Emscripten/CMake build</span><span class="pill todo">not started</span></div>
-            <div class="status-row"><span class="label">Vulkan → web graphics</span><span class="pill todo">not started</span></div>
-            <div class="mode-help" style="margin-top:8px;">Full detail, milestone-by-milestone: <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener" style="color:#89b4fa;">PROJECT.md</a>.</div>
+            <div class="status-row"><span class="label">Emscripten/CMake build (wasm64)</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">x86-64 interpreter (int, x87, SSE4, AVX)</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">Guest virtual memory</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">Wired into shadPS4's linker/HLE</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">VideoOut → canvas (CPU scan-out)</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">GPU rendering (Vulkan → WebGPU)</span><span class="pill todo">not started</span></div>
+            <div class="status-row"><span class="label">Networking / PSN, video decode</span><span class="pill todo">excluded</span></div>
+            <div class="mode-help" style="margin-top:8px;">Details and known limits: <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>.</div>
+            <div id="env-status" class="mode-help" style="margin-top:6px;"></div>
         </div>
-
-        <div class="card" data-widget="renderer">
-            <h2><span>🖥 Renderer</span><span class="collapse-arrow">▾</span></h2>
-            <select id="renderer-mode" class="renderer-select" aria-label="Renderer backend">
-                <option value="auto">Auto</option>
-                <option value="webgpu">WebGPU (planned)</option>
-                <option value="vulkan">Vulkan (native only — no browser support)</option>
-            </select>
-            <label for="resolution-scale" class="field-label">Internal resolution</label>
-            <select id="resolution-scale" class="renderer-select" aria-label="Internal resolution">
-                <option value="1">1x Native</option>
-                <option value="2">2x</option>
-                <option value="3">3x</option>
-            </select>
-            <div class="mode-help warn">shadPS4's renderer is Vulkan-only today; browsers expose no Vulkan. This card previews the intended options — neither has any effect yet.</div>
+        <div class="card" data-widget="input">
+            <h2><span>🎮 Controls</span><span class="collapse-arrow">▾</span></h2>
+            <table class="keys">
+                <tr><td>D-pad</td><td><kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd></td></tr>
+                <tr><td>✕ ○ □ △</td><td><kbd>X</kbd> <kbd>Z</kbd> <kbd>S</kbd> <kbd>A</kbd></td></tr>
+                <tr><td>L1 R1 / L2 R2</td><td><kbd>Q</kbd> <kbd>W</kbd> / <kbd>1</kbd> <kbd>2</kbd></td></tr>
+                <tr><td>Options / Touchpad</td><td><kbd>Enter</kbd> / <kbd>Space</kbd></td></tr>
+            </table>
         </div>
-
-        <div class="card" data-widget="cpu">
-            <h2><span>⚙ CPU</span><span class="collapse-arrow">▾</span></h2>
-            <label class="audio-toggle locked">
-                <input type="checkbox" checked disabled>
-                Use the x86-64 interpreter
-            </label>
-            <div class="mode-help">Not a choice — shadPS4 has no other way to run guest code in a browser. Direct host-CPU execution (what every other shadPS4 build does) is impossible inside WebAssembly.</div>
-            <div class="mode-help" style="margin-top:8px;">Not yet implemented in the interpreter: SSE/AVX floating point, REP-prefixed string instructions. See PROJECT.md, "Instruction coverage".</div>
-        </div>
-
-        <div class="card" data-widget="game-file">
-            <h2><span>📂 Game File</span><span class="collapse-arrow">▾</span></h2>
-            <input type="file" id="file-input" accept=".elf,.bin,.pkg,.oelf">
-            <label for="file-input" class="file-label" id="file-label">Drop a PS4 ELF/PKG here, or click to choose</label>
-            <button class="btn btn-primary" id="btn-load" disabled>Load &amp; Run</button>
-            <div id="file-status" class="mode-help">Reads the file locally in your browser to show what it is. Does not upload it, and does not run it.</div>
-            <div id="file-info"></div>
-        </div>
-
-        <div class="card" data-widget="emulation">
-            <h2><span>▶ Emulation</span><span class="collapse-arrow">▾</span></h2>
-            <button class="btn btn-primary" id="btn-init" disabled>Initialize</button>
-            <button class="btn btn-success" id="btn-step" disabled>Step Frame</button>
-            <button class="btn btn-secondary" id="btn-run" disabled>▶ Run</button>
-            <button class="btn btn-secondary" id="btn-stop" disabled>⏹ Stop</button>
-            <div class="mode-help">Disabled: there is no emulation core bound to this page. See the Status card.</div>
-        </div>
-
-        <div class="card" data-widget="fullscreen">
+        <div class="card" data-widget="display">
             <h2><span>⛶ Display</span><span class="collapse-arrow">▾</span></h2>
             <button type="button" class="btn btn-secondary" id="btn-fullscreen">⛶ Fullscreen</button>
-            <div class="mode-help" style="margin-top:4px;">This one actually works — it's just the browser Fullscreen API on the placeholder canvas.</div>
+            <div class="mode-help" id="frame-stats">Frames presented: 0</div>
         </div>
-
+        <div class="card wide" data-widget="log">
+            <h2><span>📜 Log</span><span class="collapse-arrow">▾</span></h2>
+            <div id="log"></div>
+            <label class="audio-toggle"><input type="checkbox" id="log-follow" checked> Follow output</label>
+        </div>
     </div>
 </div>
-
+<script src="shadps4.js"></script>
+<script src="shadps4_runner.js"></script>
 <script>
 (function () {
-    // Card collapse toggling - the one piece of "widget" interactivity this page implements for
-    // real, kept deliberately simple (no drag/resize/masonry layout manager).
     document.querySelectorAll('.card > h2').forEach(h2 => {
         h2.addEventListener('click', () => h2.closest('.card').classList.toggle('is-collapsed'));
     });
 
-    // File inspector: reads the header locally and reports what it looks like. Does not upload
-    // the file anywhere and does not attempt to execute it - there is nothing here that could.
-    const fileInput = document.getElementById('file-input');
-    const fileLabel = document.getElementById('file-label');
-    const fileInfo = document.getElementById('file-info');
+    const $ = id => document.getElementById(id);
+    const canvas = $('canvas');
+    const logEl = $('log');
+    const problems = shadps4.environmentProblems();
+    $('env-status').textContent = problems.length
+        ? 'This browser can\'t run it: ' + problems.join('; ') + '.'
+        : 'Browser support: OK (cross-origin isolated, wasm64).';
+    if (problems.length) $('env-status').classList.add('warn');
 
-    function describe(file, bytes) {
-        const hex = Array.from(bytes.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-        const isElf = bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 && bytes[2] === 0x4c && bytes[3] === 0x46;
-        fileInfo.textContent = [
-            `name:  ${file.name}`,
-            `size:  ${file.size.toLocaleString()} bytes`,
-            `magic: ${hex}${bytes.length > 16 ? ' ...' : ''}`,
-            `looks like an ELF: ${isElf ? 'yes' : 'no'}`,
-        ].join('\n');
-        fileInfo.style.display = 'block';
-        fileLabel.textContent = file.name;
-    }
-
-    function handleFile(file) {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => describe(file, new Uint8Array(reader.result));
-        reader.readAsArrayBuffer(file.slice(0, 64));
-    }
-
-    fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
-    fileLabel.addEventListener('dragover', e => { e.preventDefault(); fileLabel.classList.add('drag'); });
-    fileLabel.addEventListener('dragleave', () => fileLabel.classList.remove('drag'));
-    fileLabel.addEventListener('drop', e => {
-        e.preventDefault();
-        fileLabel.classList.remove('drag');
-        handleFile(e.dataTransfer.files[0]);
+    let pending = [];
+    let flushQueued = false;
+    shadps4.on('log', ({ text, isError }) => {
+        pending.push({ text, isError });
+        if (!flushQueued) {
+            flushQueued = true;
+            requestAnimationFrame(() => {
+                const frag = document.createDocumentFragment();
+                for (const l of pending) {
+                    const div = document.createElement('div');
+                    div.textContent = l.text;
+                    if (l.isError) div.className = 'err';
+                    if (l.text.includes('[Tty]')) div.className = 'guest';
+                    frag.appendChild(div);
+                }
+                pending = [];
+                flushQueued = false;
+                logEl.appendChild(frag);
+                while (logEl.childElementCount > 4000) logEl.removeChild(logEl.firstChild);
+                if ($('log-follow').checked) logEl.scrollTop = logEl.scrollHeight;
+            });
+        }
+    });
+    shadps4.on('status', text => { $('game-status').textContent = text; });
+    shadps4.on('frame', ({ w, h, index }) => {
+        $('canvas-caption').textContent = `VideoOut scan-out · ${w}×${h}`;
+        $('frame-stats').textContent = `Frames presented: ${index}`;
     });
 
-    // Fullscreen: real functionality, scoped to the browser's Fullscreen API on the stage.
-    const stage = document.getElementById('screen-stage');
-    function toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            stage.requestFullscreen?.().catch(() => {});
-        } else {
-            document.exitFullscreen?.();
+    $('folder-input').addEventListener('change', e => {
+        const info = shadps4.setGameFiles(e.target.files);
+        $('folder-label').textContent = info.eboot
+            ? `${info.eboot} (${info.count} files, ${(info.bytes / 2 ** 30).toFixed(2)} GiB)`
+            : 'No eboot.bin in that folder';
+        $('btn-start').disabled = !info.eboot || problems.length > 0;
+        $('game-status').textContent = info.eboot ? 'Ready.' : 'Pick the folder that contains eboot.bin.';
+    });
+    $('btn-start').addEventListener('click', async () => {
+        $('btn-start').disabled = true;
+        try {
+            await shadps4.start(canvas);
+        } catch (err) {
+            $('game-status').textContent = 'Error: ' + err.message;
+            $('btn-start').disabled = false;
         }
+    });
+    $('btn-reset').addEventListener('click', () => location.reload());
+
+    const stage = $('screen-stage');
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) stage.requestFullscreen?.().catch(() => {});
+        else document.exitFullscreen?.();
     }
-    document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
-    document.getElementById('btn-fullscreen-stage').addEventListener('click', toggleFullscreen);
+    $('btn-fullscreen').addEventListener('click', toggleFullscreen);
+    $('btn-fullscreen-stage').addEventListener('click', toggleFullscreen);
     document.addEventListener('fullscreenchange', () => {
         stage.classList.toggle('is-fullscreen', !!document.fullscreenElement);
     });
