@@ -33,7 +33,9 @@ tests/
 ```
 
 URL parameters: `?renderer=webgpu|webgl2|2d` forces a presenter. `?gpu=off` keeps WebGPU from
-the emulator, so compute dispatches are dropped.
+the emulator, so compute dispatches are dropped. `?env=NAME=value,...` sets environment variables
+for the emulator, such as the options of the Paleblood replacements the backend compiles in for
+Bloodborne (`BB_TARGET_FPS=60`, `BB_LIMITER_WAIT=sleep`).
 
 ## Run locally
 

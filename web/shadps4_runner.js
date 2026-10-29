@@ -84,6 +84,17 @@
     return problems;
   }
 
+  // ?env=NAME=value,NAME=value: environment variables for the emulator's getenv(), e.g.
+  // Paleblood's BB_TARGET_FPS=60 or BB_LIMITER_WAIT=sleep (Bloodborne only).
+  function envFromQuery() {
+    const env = {};
+    for (const item of (params.get("env") || "").split(",")) {
+      const eq = item.indexOf("=");
+      if (eq > 0) env[item.slice(0, eq).trim()] = item.slice(eq + 1).trim();
+    }
+    return env;
+  }
+
   async function loadModule(canvas) {
     if (state.module) return state.module;
     if (typeof createShadPS4 !== "function") {
@@ -94,6 +105,7 @@
       print: (t) => addLog(t, false),
       printErr: (t) => addLog(t, true),
       shadps4GpuMode: params.get("gpu") === "off" ? "off" : undefined,
+      shadps4Env: envFromQuery(),
       shadps4OnFrame: (rgba, w, h, index) => {
         if (state.presenter) state.presenter.present(rgba, w, h);
         state.frames = index;
