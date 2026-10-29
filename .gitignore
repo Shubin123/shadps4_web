@@ -4,3 +4,6 @@ compile_commands.json
 *.a
 .DS_Store
 .cache/
+node_modules/
+e2e.log
+e2e.png

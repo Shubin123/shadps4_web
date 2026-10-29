@@ -4,6 +4,12 @@
   "private": true,
   "description": "Web frontend for the shadPS4 WebAssembly build. Engine work lives in Shubin123/shadps4_emscripten.",
   "scripts": {
-    "serve": "node web/server.cjs"
+    "serve": "node web/server.cjs",
+    "sync": "scripts/sync_runtime.sh",
+    "test:e2e": "node tests/e2e.mjs"
+  },
+  "type": "module",
+  "devDependencies": {
+    "playwright": "1.64.1"
   }
 }

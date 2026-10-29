@@ -2,9 +2,9 @@
 'use strict';
 
 // Minimal static file server for web/. Cross-Origin-Opener-Policy/Cross-Origin-Embedder-Policy
-// are set on every response because SharedArrayBuffer (needed for any future pthreads-enabled
-// wasm build) requires the page to be cross-origin isolated - setting these now, even though
-// there is no wasm module to load yet, avoids relearning this requirement later.
+// are set on every response because the wasm build uses pthreads, i.e. SharedArrayBuffer, which
+// requires the page to be cross-origin isolated. (GitHub Pages can't set headers; there,
+// coi-serviceworker.js adds them from a service worker instead.)
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
