@@ -2,7 +2,7 @@
   "name": "shadps4_web",
   "version": "0.1.0",
   "private": true,
-  "description": "Web frontend scaffold and dev server for the shadPS4 Emscripten wrapper. See PROJECT.md for what actually works.",
+  "description": "Web frontend for the shadPS4 WebAssembly build. Engine work lives in Shubin123/shadps4_emscripten.",
   "scripts": {
     "serve": "node web/server.cjs"
   }

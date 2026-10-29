@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Publishes web/index.html to the gh-pages branch, which GitHub Pages is configured to serve
+# Publishes web/ (the page plus any built .wasm/.js artifacts) to the gh-pages branch, which GitHub Pages is configured to serve
 # directly (Settings -> Pages -> Deploy from a branch -> gh-pages / root) - no GitHub Actions
-# workflow involved. Run from a checkout of main with no uncommitted changes to web/index.html.
+# workflow involved. Run from a checkout of main.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,18 +16,19 @@ else
     git worktree add --orphan -b gh-pages "$WORKTREE_DIR"
 fi
 
-cp web/index.html "$WORKTREE_DIR/index.html"
+find "$WORKTREE_DIR" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+rsync -a --exclude server.cjs web/ "$WORKTREE_DIR/"
 touch "$WORKTREE_DIR/.nojekyll"
 
 cd "$WORKTREE_DIR"
 git add -A
 if git diff --cached --quiet; then
-    echo "gh-pages already up to date with web/index.html"
+    echo "gh-pages already up to date with web/"
     exit 0
 fi
 
 SOURCE_COMMIT="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
-git commit -m "Deploy web/index.html from main@${SOURCE_COMMIT}"
+git commit -m "Deploy web/ from main@${SOURCE_COMMIT}"
 git push origin gh-pages
 
 echo "Deployed. Enable it once under Settings -> Pages -> Deploy from a branch -> gh-pages / (root)."

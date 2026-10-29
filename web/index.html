@@ -211,8 +211,9 @@
     <p>PlayStation 4 Emulator — WebAssembly attempt, in progress</p>
     <div class="links">
         <a href="https://github.com/shadps4-emu/shadps4" target="_blank" rel="noopener">shadPS4 upstream</a>·
-        <a href="https://github.com/Shubin123/shadps4_web" target="_blank" rel="noopener">this repo</a>·
-        <a href="https://github.com/Shubin123/shadps4_web/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>
+        <a href="https://github.com/Shubin123/shadps4_emscripten" target="_blank" rel="noopener">backend</a>·
+        <a href="https://github.com/Shubin123/shadps4_web" target="_blank" rel="noopener">frontend</a>·
+        <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>
     </div>
 </header>
 
@@ -221,7 +222,7 @@
     host CPU instead of emulating it, which WebAssembly can't do at all — so unlike a
     Citra/Azahar-style port, there was no existing CPU interpreter to carry over. One is being
     built from scratch (register file, flags, control flow — tested, see
-    <a href="https://github.com/Shubin123/shadps4_web/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>),
+    <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>),
     but it isn't wired into a buildable shadPS4+Emscripten binary yet. The settings below reflect
     where things are, or are heading, not what works today.
 </div>
@@ -249,7 +250,7 @@
             <div class="status-row"><span class="label">Wired into shadPS4's linker</span><span class="pill pending">started</span></div>
             <div class="status-row"><span class="label">Emscripten/CMake build</span><span class="pill todo">not started</span></div>
             <div class="status-row"><span class="label">Vulkan → web graphics</span><span class="pill todo">not started</span></div>
-            <div class="mode-help" style="margin-top:8px;">Full detail, milestone-by-milestone: <a href="https://github.com/Shubin123/shadps4_web/blob/main/PROJECT.md" target="_blank" rel="noopener" style="color:#89b4fa;">PROJECT.md</a>.</div>
+            <div class="mode-help" style="margin-top:8px;">Full detail, milestone-by-milestone: <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener" style="color:#89b4fa;">PROJECT.md</a>.</div>
         </div>
 
         <div class="card" data-widget="renderer">
