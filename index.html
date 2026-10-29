@@ -273,8 +273,10 @@
             <div class="status-row"><span class="label">x86-64 interpreter (int, x87, SSE4, AVX)</span><span class="pill ok">done</span></div>
             <div class="status-row"><span class="label">Guest virtual memory</span><span class="pill ok">done</span></div>
             <div class="status-row"><span class="label">Wired into shadPS4's linker/HLE</span><span class="pill ok">done</span></div>
-            <div class="status-row"><span class="label">VideoOut → canvas (CPU scan-out)</span><span class="pill ok">done</span></div>
-            <div class="status-row"><span class="label">GPU rendering (Vulkan → WebGPU)</span><span class="pill todo">not started</span></div>
+            <div class="status-row"><span class="label">VideoOut → canvas (WebGPU, WebGL2 fallback)</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">Shader recompiler → WGSL</span><span class="pill pending">started</span></div>
+            <div class="status-row"><span class="label">Compute dispatches on WebGPU</span><span class="pill pending">started</span></div>
+            <div class="status-row"><span class="label">Draws (graphics pipelines)</span><span class="pill todo">not started</span></div>
             <div class="status-row"><span class="label">Networking / PSN, video decode</span><span class="pill todo">excluded</span></div>
             <div class="mode-help" style="margin-top:8px;">Details and known limits: <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>.</div>
             <div id="env-status" class="mode-help" style="margin-top:6px;"></div>
@@ -301,6 +303,7 @@
     </div>
 </div>
 <script src="shadps4.js"></script>
+<script src="gpu_presenter.js"></script>
 <script src="shadps4_runner.js"></script>
 <script>
 (function () {
@@ -314,7 +317,8 @@
     const problems = shadps4.environmentProblems();
     $('env-status').textContent = problems.length
         ? 'This browser can\'t run it: ' + problems.join('; ') + '.'
-        : 'Browser support: OK (cross-origin isolated, wasm64).';
+        : 'Browser support: OK (cross-origin isolated, wasm64' +
+          (navigator.gpu ? ', WebGPU' : '; no WebGPU: frames via WebGL2, no GPU compute') + ').';
     if (problems.length) $('env-status').classList.add('warn');
 
     let pending = [];
@@ -342,7 +346,7 @@
     });
     shadps4.on('status', text => { $('game-status').textContent = text; });
     shadps4.on('frame', ({ w, h, index }) => {
-        $('canvas-caption').textContent = `VideoOut scan-out · ${w}×${h}`;
+        $('canvas-caption').textContent = `VideoOut scan-out · ${w}×${h} · ${shadps4.presenter}`;
         $('frame-stats').textContent = `Frames presented: ${index}`;
     });
 
