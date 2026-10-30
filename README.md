@@ -11,9 +11,11 @@ status. This repo is the page plus the built `shadps4.js`/`shadps4.wasm`.
 What works: pick an extracted PS4 game folder (the one with `eboot.bin`), press Start, and
 upstream shadPS4 boots it in the page - modules load, the game's code runs in the interpreter,
 its log streams into the page, and VideoOut frames are drawn to the canvas (WebGPU, falling back
-to WebGL2, then a 2D canvas). With WebGPU, the emulator also gets the device and runs the game's
-compute dispatches on it. What doesn't work yet: anything the game draws with the PS4 GPU, since
-draws aren't implemented, so expect a black screen. It is also slow. Needs a browser with wasm64 and cross-origin isolation (Chrome/Edge 133+). Files are
+to WebGL2, then a 2D canvas). With WebGPU, the emulator also gets the device and renders what
+the game draws with the PS4 GPU on it: shaders recompiled to WGSL, draws, compute dispatches,
+render targets and textures, with display buffers read back at each flip. Missing: geometry and
+tessellation stages, MSAA. It is also very slow (the game's CPU code is interpreted). Needs a
+browser with wasm64 and cross-origin isolation (Chrome/Edge 133+). Files are
 read locally, never uploaded; files over 1GB are skipped (they're held in memory).
 
 ```
@@ -52,6 +54,10 @@ runs it on the fallback path). Both tests use Playwright's full Chromium (`npx p
 chromium`) with WebGPU enabled. For example, with Bully
 (CUSA03507) it passes on `"IOP Flat Memory"` - see PROJECT.md in the backend for how far that
 game gets and why.
+
+`npm install` also brings in `webgpu` (Dawn's WebGPU for Node). Nothing here uses it; the
+backend's Node runs and GPU tests (`scripts/run_node.sh`, `gpu_tests_node.js`) pick it up from
+this checkout to render without a browser.
 
 ## Deploy
 
