@@ -240,9 +240,10 @@
 <div class="banner" id="banner">
     <strong>What this does today:</strong> upstream shadPS4 (loader, linker, memory manager, ~200
     HLE system libraries) runs in your browser, and the game's x86-64 code runs in an x86-64
-    interpreter. <strong>What it doesn't do yet:</strong> anything the PS4 GPU draws (there is no
-    WebGPU backend for shadPS4's Vulkan renderer), so expect a black screen, and expect it to be
-    slow. Needs Chrome/Edge 133+ (wasm64 + SharedArrayBuffer). The game folder must be an
+    interpreter. With WebGPU, what the game draws with the PS4 GPU is rendered too: its shaders are
+    recompiled to WGSL and its draws and compute dispatches run on your GPU. Expect it to be very
+    slow (the CPU side is interpreted), and some GPU features (geometry/tessellation stages, MSAA)
+    are missing. Needs Chrome/Edge 133+ (wasm64 + SharedArrayBuffer). The game folder must be an
     extracted dump (e.g. from a fake PKG via <code>tools/extract_pkg.py</code> in the backend repo);
     files are read locally and never uploaded.
 </div>
@@ -274,10 +275,10 @@
             <div class="status-row"><span class="label">Guest virtual memory</span><span class="pill ok">done</span></div>
             <div class="status-row"><span class="label">Wired into shadPS4's linker/HLE</span><span class="pill ok">done</span></div>
             <div class="status-row"><span class="label">VideoOut → canvas (WebGPU, WebGL2 fallback)</span><span class="pill ok">done</span></div>
-            <div class="status-row"><span class="label">Shader recompiler → WGSL</span><span class="pill pending">started</span></div>
-            <div class="status-row"><span class="label">Compute dispatches on WebGPU</span><span class="pill pending">started</span></div>
-            <div class="status-row"><span class="label">Draws (graphics pipelines)</span><span class="pill todo">not started</span></div>
-            <div class="status-row"><span class="label">Networking / PSN, video decode</span><span class="pill todo">excluded</span></div>
+            <div class="status-row"><span class="label">Shader recompiler → WGSL</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">Compute dispatches on WebGPU</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">Draws (graphics pipelines, textures)</span><span class="pill ok">done</span></div>
+            <div class="status-row"><span class="label">Networking (offline console), PSN, video decode</span><span class="pill todo">excluded</span></div>
             <div class="mode-help" style="margin-top:8px;">Details and known limits: <a href="https://github.com/Shubin123/shadps4_emscripten/blob/main/PROJECT.md" target="_blank" rel="noopener">PROJECT.md</a>.</div>
             <div id="env-status" class="mode-help" style="margin-top:6px;"></div>
         </div>
